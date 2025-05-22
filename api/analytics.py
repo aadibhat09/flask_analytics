@@ -252,28 +252,37 @@ class AdminUserCommits(Resource):
     @token_required()
     def get(self, uid):
         try:
+            # Check if the current user has 'Admin' role; if not, deny access with a 403 status
             if g.current_user.role != 'Admin':
                 return {'message': 'Access denied: Admins only.'}, 403
 
+            # Attempt to parse the request's JSON body; if the request does not contain valid JSON, assign an empty dictionary
             try:
                 body = request.get_json()
             except Exception as e:
                 body = {}
 
+            # Extract the start and end date from the parsed body; fallback to default values if not provided
             start_date, end_date = get_date_range(body)
 
+            # Query the database to find the user by the provided unique user ID (uid)
             user = User.query.filter_by(_uid=uid).first()
+
+            # If the user is not found, return a 404 Not Found error message
             if not user:
                 return {'message': 'User not found'}, 404
 
             github_user_resource = GitHubUser()
+            
+            # Retrieve the commit statistics for the given user, filtered by the date range
             response = github_user_resource.get_commit_stats(user.uid, start_date, end_date)
+            
             if response is None or len(response) < 2:
                 return {'message': 'Error fetching commits for this user'}, 500
 
             return jsonify({
                 'uid': user.uid,
-                'commits': response[0]
+                'commits': response[0]  # Assuming the first item in response contains the commit data
             })
 
         except Exception as e:
