@@ -311,9 +311,30 @@ class AdminUserCommits(Resource):
                 print(f"Error occurred: {e}")
             attempt += 1
         return None  # If retries are exhausted
+class UserLineChanges(Resource):
+    @token_required()
+    def get(self):
+        try:
+            current_user = g.current_user
+            try:
+                body = request.get_json()
+            except Exception:
+                body = {}
+
+            start_date, end_date = get_date_range(body)
+
+            github_user_resource = GitHubUser()
+            response = github_user_resource.get_line_changes(current_user.uid, start_date, end_date)
+
+            if response[1] != 200:
+                return response
+
+            return jsonify(response[0])
+        except Exception as e:
+            return {'message': str(e)}, 500
 
 
-
+api.add_resource(UserLineChanges, '/github/user/line_changes')
 api.add_resource(GitHubUserAPI, '/github/user')
 api.add_resource(UserProfileLinks, '/github/user/profile_links')
 api.add_resource(UserCommits, '/github/user/commits')
